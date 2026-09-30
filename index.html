@@ -35,6 +35,13 @@ h1 {
 }
 .status.check { color: #ff5c5c; border-color: rgba(255,92,92,0.4); }
 .status.thinking { color: #c9a961; border-color: rgba(201,169,97,0.4); }
+
+/* ===== PAPAN + LAYER BIDAK ===== */
+.board-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 14px;
+}
 .board {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -42,8 +49,14 @@ h1 {
   width: 100%; height: 0;
   border-radius: 6px; overflow: hidden;
   user-select: none; -webkit-user-select: none;
-  touch-action: manipulation; margin-bottom: 14px;
+  touch-action: manipulation;
   border: 1px solid #232323; background: #3a3a3a;
+}
+.pieces-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
 }
 .square {
   display: flex; align-items: center; justify-content: center;
@@ -59,6 +72,7 @@ h1 {
   content: ''; position: absolute;
   width: 26%; height: 26%; border-radius: 50%;
   background: rgba(0,0,0,0.25); pointer-events: none;
+  z-index: 1;
 }
 .square.dark.legal-move::after { background: rgba(255,255,255,0.3); }
 .square.legal-capture::after {
@@ -66,16 +80,36 @@ h1 {
   inset: 6%; border-radius: 50%;
   border: 2.5px solid rgba(0,0,0,0.35); background: transparent;
   pointer-events: none;
+  z-index: 1;
 }
 .square.dark.legal-capture::after { border-color: rgba(255,255,255,0.4); }
+
+/* ===== BIDAK (absolute position, animasi smooth) ===== */
 .piece {
+  position: absolute;
+  width: 12.5%;
+  height: 12.5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', sans-serif;
-  pointer-events: none; user-select: none;
-  -webkit-user-select: none; display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: left, top, opacity, transform;
+  transition: left 0.32s cubic-bezier(0.34, 1.15, 0.64, 1),
+              top  0.32s cubic-bezier(0.34, 1.15, 0.64, 1),
+              opacity 0.22s ease-out,
+              transform 0.22s ease-out;
 }
 .piece.w { color: #fafafa; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
 .piece.b { color: #161616; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+.piece.fade-out {
+  opacity: 0;
+  transform: scale(0.55);
+}
+
 .btn-reset {
   width: 100%; padding: 12px;
   background: transparent; color: #767676;
@@ -113,7 +147,10 @@ h1 {
 <div class="container">
   <h1>Chess · vs Bot</h1>
   <div class="status" id="status">Giliran Putih</div>
-  <div class="board" id="board"></div>
+  <div class="board-wrapper" id="boardWrapper">
+    <div class="board" id="board"></div>
+    <div class="pieces-layer" id="piecesLayer"></div>
+  </div>
   <button class="btn-reset" id="resetBtn">New Game</button>
   <div class="history">
     <h3>Riwayat</h3>
@@ -123,9 +160,9 @@ h1 {
 
 <script>
 // ==================== KONFIGURASI ====================
-var BOT_ENABLED = true;     // ganti false kalau mau 2 pemain
-var BOT_COLOR = 'b';        // bot main hitam
-var BOT_DEPTH = 3;          // 2 = cepat/lemah, 3 = seimbang, 4 = lambat/kuat
+var BOT_ENABLED = true;
+var BOT_COLOR = 'b';
+var BOT_DEPTH = 3;
 
 // ==================== STATE ====================
 var initialBoard = [
@@ -147,6 +184,9 @@ var gameOver = false;
 var botThinking = false;
 var lastMove = null;
 
+// Map posisi "r,c" → element DOM bidak
+var pieceEls = {};
+
 var pieceSymbols = {
   'K':'♚','Q':'♛','R':'♜','B':'♝','N':'♞','P':'♟',
   'k':'♚','q':'♛','r':'♜','b':'♝','n':'♞','p':'♟'
@@ -159,17 +199,37 @@ function sameColor(a, b) { return a && b && (isWhite(a) === isWhite(b)); }
 
 // ==================== UKUR PAPAN ====================
 function updateBoardSize() {
-  var el = document.getElementById('board');
-  if (!el) return;
-  var size = el.clientWidth;
+  var boardEl = document.getElementById('board');
+  var layer = document.getElementById('piecesLayer');
+  if (!boardEl) return;
+  var size = boardEl.clientWidth;
   if (size > 0) {
-    el.style.height = size + 'px';
-    el.style.fontSize = (size / 8 * 0.72) + 'px';
+    boardEl.style.height = size + 'px';
+    if (layer) layer.style.fontSize = (size / 8 * 0.72) + 'px';
   }
 }
 
-// ==================== RENDER ====================
-function renderBoard() {
+// ==================== BIKIN ELEMEN BIDAK ====================
+function createPieceEl(piece, r, c) {
+  var el = document.createElement('span');
+  el.className = 'piece ' + (isWhite(piece) ? 'w' : 'b');
+  el.textContent = pieceSymbols[piece];
+  el.style.left = (c * 12.5) + '%';
+  el.style.top = (r * 12.5) + '%';
+  el.dataset.row = r;
+  el.dataset.col = c;
+  return el;
+}
+
+function positionPieceEl(el, r, c) {
+  el.style.left = (c * 12.5) + '%';
+  el.style.top = (r * 12.5) + '%';
+  el.dataset.row = r;
+  el.dataset.col = c;
+}
+
+// ==================== RENDER SQUARES (highlight) ====================
+function renderSquares() {
   var boardEl = document.getElementById('board');
   boardEl.innerHTML = '';
   var anySelected = selectedSquare;
@@ -196,14 +256,6 @@ function renderBoard() {
         }
       }
 
-      var piece = board[r][c];
-      if (piece) {
-        var pEl = document.createElement('span');
-        pEl.className = 'piece ' + (isWhite(piece) ? 'w' : 'b');
-        pEl.textContent = pieceSymbols[piece];
-        sq.appendChild(pEl);
-      }
-
       (function(rr, cc) {
         sq.addEventListener('click', function() { handleSquareClick(rr, cc); });
       })(r, c);
@@ -216,6 +268,24 @@ function renderBoard() {
     if (kp) {
       var ks = boardEl.querySelector('.square[data-row="' + kp.row + '"][data-col="' + kp.col + '"]');
       if (ks) ks.classList.add('check');
+    }
+  }
+  updateBoardSize();
+}
+
+// ==================== RENDER SEMUA BIDAK (dari state) ====================
+function renderAllPieces() {
+  var layer = document.getElementById('piecesLayer');
+  layer.innerHTML = '';
+  pieceEls = {};
+
+  for (var r = 0; r < 8; r++) {
+    for (var c = 0; c < 8; c++) {
+      var piece = board[r][c];
+      if (!piece) continue;
+      var el = createPieceEl(piece, r, c);
+      layer.appendChild(el);
+      pieceEls[r + ',' + c] = el;
     }
   }
   updateBoardSize();
@@ -236,10 +306,10 @@ function handleSquareClick(r, c) {
     }
     if (target) {
       var fr = selectedSquare.row, fc = selectedSquare.col;
-      makeMove(fr, fc, r, c, target);
-      lastMove = { fromR: fr, fromC: fc, toR: r, toC: c };
       selectedSquare = null;
-      renderBoard();
+      lastMove = { fromR: fr, fromC: fc, toR: r, toC: c };
+      makeMove(fr, fc, r, c, target);
+      renderSquares();
       maybeTriggerBot();
       return;
     }
@@ -250,14 +320,76 @@ function handleSquareClick(r, c) {
   } else {
     selectedSquare = null;
   }
-  renderBoard();
+  renderSquares();
 }
 
-// ==================== EKSEKUSI ====================
+// ==================== EKSEKUSI + ANIMASI ====================
 function makeMove(fromR, fromC, toR, toC, moveInfo) {
   var piece = board[fromR][fromC];
   var captured = board[toR][toC];
 
+  // ========== ANIMASI (sebelum state berubah) ==========
+  var movingEl = pieceEls[fromR + ',' + fromC];
+  var capturedEl = pieceEls[toR + ',' + toC];
+
+  // En passant: bidak lawan ada di [fromR, toC], bukan di [toR, toC]
+  if (moveInfo.enPassant) {
+    var epKey = fromR + ',' + toC;
+    var epEl = pieceEls[epKey];
+    if (epEl) {
+      epEl.classList.add('fade-out');
+      (function(e) {
+        setTimeout(function() { if (e.parentNode) e.parentNode.removeChild(e); }, 260);
+      })(epEl);
+      delete pieceEls[epKey];
+    }
+  }
+
+  // Bidak lawan yang dimakan (normal)
+  if (capturedEl && !moveInfo.enPassant) {
+    capturedEl.classList.add('fade-out');
+    (function(e) {
+      setTimeout(function() { if (e.parentNode) e.parentNode.removeChild(e); }, 260);
+    })(capturedEl);
+    delete pieceEls[toR + ',' + toC];
+  }
+
+  // Geser bidak utama
+  if (movingEl) {
+    delete pieceEls[fromR + ',' + fromC];
+    positionPieceEl(movingEl, toR, toC);
+    pieceEls[toR + ',' + toC] = movingEl;
+  }
+
+  // Castling: geser benteng juga
+  if (moveInfo.castle === 'K') {
+    var rookEl = pieceEls[toR + ',' + 7];
+    if (rookEl) {
+      delete pieceEls[toR + ',' + 7];
+      positionPieceEl(rookEl, toR, 5);
+      pieceEls[toR + ',' + 5] = rookEl;
+    }
+  } else if (moveInfo.castle === 'Q') {
+    var rookEl = pieceEls[toR + ',' + 0];
+    if (rookEl) {
+      delete pieceEls[toR + ',' + 0];
+      positionPieceEl(rookEl, toR, 3);
+      pieceEls[toR + ',' + 3] = rookEl;
+    }
+  }
+
+  // Promosi: ganti simbol setelah animasi selesai
+  if (moveInfo.promotion && movingEl) {
+    (function(el, promo, white) {
+      setTimeout(function() {
+        if (el && el.parentNode) {
+          el.textContent = pieceSymbols[white ? promo.toUpperCase() : promo.toLowerCase()];
+        }
+      }, 280);
+    })(movingEl, moveInfo.promotion, isWhite(piece));
+  }
+
+  // ========== UPDATE STATE ==========
   if (moveInfo.enPassant) board[fromR][toC] = null;
 
   if (moveInfo.promotion) {
@@ -310,16 +442,15 @@ function maybeTriggerBot() {
     botThinking = false;
     if (best) {
       var fr = best.fromR, fc = best.fromC, tr = best.toR, tc = best.toC;
-      makeMove(fr, fc, tr, tc, best.info);
       lastMove = { fromR: fr, fromC: fc, toR: tr, toC: tc };
-      selectedSquare = null;
-      renderBoard();
+      makeMove(fr, fc, tr, tc, best.info);
+      renderSquares();
     }
     updateStatus();
-  }, 80);
+  }, 120);
 }
 
-// ==================== LEGAL MOVES (untuk UI) ====================
+// ==================== LEGAL MOVES ====================
 function getLegalMovesForPiece(r, c) {
   var piece = board[r][c];
   if (!piece) return [];
@@ -537,7 +668,7 @@ function hasAnyLegalMove(color) {
 var pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
 
 var pstPawn = [
-  [ 0,0,0,0,0,0,0,0],[50,50,50,50,50,50,50,50],
+  [0,0,0,0,0,0,0,0],[50,50,50,50,50,50,50,50],
   [10,10,20,30,30,20,10,10],[5,5,10,25,25,10,5,5],
   [0,0,0,20,20,0,0,0],[5,-5,-10,0,0,-10,-5,5],
   [5,10,10,-20,-20,10,10,5],[0,0,0,0,0,0,0,0]
@@ -787,11 +918,15 @@ function resetGame() {
   s.classList.remove('check', 'thinking');
   updateStatus();
   updateHistory();
-  renderBoard();
+  renderSquares();
+  renderAllPieces();
 }
 
 document.getElementById('resetBtn').addEventListener('click', resetGame);
-renderBoard();
+
+// ==================== MULAI ====================
+renderSquares();
+renderAllPieces();
 updateStatus();
 window.addEventListener('load', updateBoardSize);
 window.addEventListener('resize', updateBoardSize);
