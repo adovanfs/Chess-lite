@@ -17,7 +17,6 @@ let moveHistory = [];
 let enPassantTarget = null;
 let gameOver = false;
 
-// Pakai simbol filled untuk kedua warna, warnanya diatur CSS
 const pieceSymbols = {
   'K': '♚', 'Q': '♛', 'R': '♜', 'B': '♝', 'N': '♞', 'P': '♟',
   'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
@@ -29,19 +28,22 @@ const isWhite = (p) => p && p === p.toUpperCase();
 const isBlack = (p) => p && p === p.toLowerCase();
 const sameColor = (p1, p2) => p1 && p2 && (isWhite(p1) === isWhite(p2));
 
-// ====== UKURAN PAPAN (fix kotak tidak rapi) ======
+// ====== UKURAN PAPAN (fix iOS Safari) ======
 function updateBoardSize() {
   const boardEl = document.getElementById('board');
   if (!boardEl) return;
-  const size = boardEl.clientWidth / 8;
-  boardEl.style.fontSize = (sizeChar *Code 0.72) + 'px';
-(}
+  const size = boardEl.clientWidth;
+  if (size > 0) {
+    boardEl.style.height = size + 'px';
+    boardEl.style.fontSize = (size / 8 * 0.72) + 'px';
+  }
+}
 
 window.addEventListener('resize', updateBoardSize);
-window.addEventListener('orientationchange', () => setTimeout(updateBoardSize, 97100));
+window.addEventListener('orientationchange', () => setTimeout(updateBoardSize, 150));
 
-// ====== RENDER ===== +=
-function renderBoard from() {
+// ====== RENDER ======
+function renderBoard() {
   const boardEl = document.getElementById('board');
   boardEl.innerHTML = '';
 
@@ -82,6 +84,9 @@ function renderBoard from() {
       if (sq) sq.classList.add('check');
     }
   }
+
+  // PENTING: ukur ulang setelah render
+  requestAnimationFrame(updateBoardSize);
 }
 
 // ====== KLIK ======
@@ -136,7 +141,7 @@ function makeMove(fromR, fromC, toR, toC, moveInfo) {
   }
 
   const letter = notationLetter[piece.toUpperCase()];
-  const fromSq = String.fromC) + (8 - fromR);
+  const fromSq = String.fromCharCode(97 + fromC) + (8 - fromR);
   const toSq = String.fromCharCode(97 + toC) + (8 - toR);
   const notation = `${letter}${fromSq}→${toSq}${captured ? '×' : ''}`;
   moveHistory.push(notation);
@@ -383,12 +388,13 @@ function resetGame() {
   updateStatus();
   updateHistory();
   renderBoard();
-  updateBoardSize();
 }
 
 document.getElementById('resetBtn').addEventListener('click', resetGame);
 
 // ====== MULAI ======
 renderBoard();
-updateBoardSize();
 updateStatus();
+updateBoardSize();
+window.addEventListener('load', updateBoardSize);
+setTimeout(updateBoardSize, 300);
