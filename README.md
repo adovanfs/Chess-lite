@@ -16,7 +16,46 @@
 
 ---
 
-## 🎬 Preview
+## ✨ Fitur
 
-> Papan catur minimalis dengan bidak yang bisa dimainkan langsung di browser.  
-> Lawan **bot AI** dengan tingkat kesulitan seimbang, atau mainkan bersama teman di device yang sama.
+| Fitur | Deskripsi |
+|---|---|
+| 🤖 **Bot AI** | Minimax + Alpha-Beta Pruning, kedalaman 3 langkah |
+| ♟️ **Aturan Catur Lengkap** | Semua langkah legal, skak, skakmat, stalemate |
+| 🏰 **Castling** | Raja & benteng bisa geser bareng |
+| 👑 **Promosi Pion** | Pion sampai ujung otomatis jadi ratu |
+| 🎯 **En Passant** | Tangkap pion lawan secara khusus |
+| 🎬 **Animasi Smooth** | Bidak meluncur dengan cubic-bezier, bukan lompat |
+| 🎨 **Dark Elegant UI** | Tema hitam minimalis dengan aksen emas |
+| 📜 **Riwayat Langkah** | Catat setiap langkah yang terjadi |
+| 📱 **Responsive** | Jalan mulus di HP dan laptop |
+| 🚀 **Zero Dependency** | HTML + CSS + JS murni, tanpa framework |
+
+---
+
+## 🎮 Cara Main
+
+1. Buka **[Live Demo](https://adovanfs.github.io/)**
+2. Kamu otomatis jadi **Putih**, bot jadi **Hitam**
+3. Klik bidak putih → kotak akan di-highlight
+4. Klik kotak tujuan → bidak meluncur ke sana
+5. Tunggu bot mikir (status jadi **"Bot berpikir..."**)
+6. Ulangi sampai salah satu menang! 🏆
+
+| Aksi | Cara |
+|---|---|
+| Pilih bidak | Tap / klik bidak |
+| Jalan | Tap / klik kotak tujuan |
+| Batal pilih | Tap kotak kosong lain |
+| Main ulang | Klik tombol **New Game** |
+
+---
+
+## ⚙️ Konfigurasi
+
+Mau ubah tingkat kesulitan bot? Buka `index.html`, cari baris ini di bagian `<script>`:
+
+```javascript
+var BOT_ENABLED = true;   // false = main 2 orang di 1 device
+var BOT_COLOR = 'b';      // bot main sebagai hitam
+var BOT_DEPTH = 3;        // 2 = mudah, 3 = sedang, 4 = susah (lebih lambat)
