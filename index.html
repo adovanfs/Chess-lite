@@ -2,22 +2,20 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mini Chess</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Chess</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
-    <h1>♟ Mini Chess</h1>
-    <div class="status" id="status">Giliran: Putih</div>
-    <div class="board-wrapper">
-      <div class="board" id="board"></div>
-    </div>
-    <div class="controls">
-      <button id="resetBtn">Reset Permainan</button>
-    </div>
+    <header class="header">
+      <h1>CHESS</h1>
+    </header>
+    <div class="status" id="status">Giliran Putih</div>
+    <div class="board" id="board"></div>
+    <button class="btn-reset" id="resetBtn">New Game</button>
     <div class="history">
-      <h3>Riwayat Langkah</h3>
+      <h3>Riwayat</h3>
       <ol id="moveHistory"></ol>
     </div>
   </div>
