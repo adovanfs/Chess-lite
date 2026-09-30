@@ -1,24 +1,553 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Chess</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Chess</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  background: #0a0a0a;
+  color: #ededed;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  display: flex; justify-content: center;
+  padding: 24px 16px; min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+.container {
+  background: #131313;
+  border: 1px solid #232323;
+  border-radius: 14px;
+  padding: 22px;
+  max-width: 460px; width: 100%;
+}
+h1 {
+  font-size: 13px; font-weight: 500;
+  letter-spacing: 0.4em; text-transform: uppercase;
+  color: #767676; text-align: center; margin-bottom: 18px;
+}
+.status {
+  font-size: 12.5px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: #ededed; text-align: center;
+  padding: 11px 14px;
+  background: #1a1a1a; border: 1px solid #232323;
+  border-radius: 8px; margin-bottom: 14px;
+  min-height: 42px; display: flex; align-items: center; justify-content: center;
+}
+.status.check { color: #ff5c5c; border-color: rgba(255,92,92,0.4); }
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  width: 100%; height: 0;
+  border-radius: 6px; overflow: hidden;
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+  margin-bottom: 14px;
+  border: 1px solid #232323;
+  background: #3a3a3a;
+}
+.square {
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; position: relative; overflow: hidden;
+  width: 100%; height: 100%; min-width: 0; min-height: 0;
+}
+.square.light { background: #e2e2e2; }
+.square.dark { background: #3a3a3a; }
+.square.selected { box-shadow: inset 0 0 0 999px rgba(201,169,97,0.45); }
+.square.check { box-shadow: inset 0 0 0 999px rgba(255,60,60,0.5); }
+.square.legal-move::after {
+  content: ''; position: absolute;
+  width: 26%; height: 26%; border-radius: 50%;
+  background: rgba(0,0,0,0.25); pointer-events: none;
+}
+.square.dark.legal-move::after { background: rgba(255,255,255,0.3); }
+.square.legal-capture::after {
+  content: ''; position: absolute;
+  inset: 6%; border-radius: 50%;
+  border: 2.5px solid rgba(0,0,0,0.35); background: transparent;
+  pointer-events: none;
+}
+.square.dark.legal-capture::after { border-color: rgba(255,255,255,0.4); }
+.piece {
+  line-height: 1;
+  font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', sans-serif;
+  pointer-events: none; user-select: none; -webkit-user-select: none; display: block;
+}
+.piece.w { color: #fafafa; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+.piece.b { color: #161616; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+.btn-reset {
+  width: 100%; padding: 12px;
+  background: transparent; color: #767676;
+  border: 1px solid #232323; border-radius: 8px;
+  font-size: 11.5px; font-weight: 500;
+  letter-spacing: 0.25em; text-transform: uppercase;
+  cursor: pointer; font-family: inherit;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.btn-reset:hover, .btn-reset:active {
+  color: #c9a961; border-color: #c9a961; background: #1a1a1a;
+}
+.history {
+  margin-top: 14px; padding: 12px 16px;
+  background: #1a1a1a; border: 1px solid #232323;
+  border-radius: 8px; max-height: 130px; overflow-y: auto;
+}
+.history h3 {
+  font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.25em;
+  color: #767676; margin-bottom: 8px;
+}
+.history ol {
+  padding-left: 22px; font-size: 12.5px;
+  line-height: 1.8; color: #ededed;
+  font-variant-numeric: tabular-nums;
+}
+.history ol:empty::before {
+  content: 'Belum ada langkah';
+  font-style: italic; color: #767676; font-size: 12px;
+}
+</style>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <h1>CHESS</h1>
-    </header>
-    <div class="status" id="status">Giliran Putih</div>
-    <div class="board" id="board"></div>
-    <button class="btn-reset" id="resetBtn">New Game</button>
-    <div class="history">
-      <h3>Riwayat</h3>
-      <ol id="moveHistory"></ol>
-    </div>
+<div class="container">
+  <h1>Chess</h1>
+  <div class="status" id="status">Giliran Putih</div>
+  <div class="board" id="board"></div>
+  <button class="btn-reset" id="resetBtn">New Game</button>
+  <div class="history">
+    <h3>Riwayat</h3>
+    <ol id="moveHistory"></ol>
   </div>
-  <script src="script.js"></script>
+</div>
+
+<script>
+// ====== STATE ======
+var initialBoard = [
+  ['r','n','b','q','k','b','n','r'],
+  ['p','p','p','p','p','p','p','p'],
+  [null,null,null,null,null,null,null,null],
+  [null,null,null,null,null,null,null,null],
+  [null,null,null,null,null,null,null,null],
+  [null,null,null,null,null,null,null,null],
+  ['P','P','P','P','P','P','P','P'],
+  ['R','N','B','Q','K','B','N','R']
+];
+
+var board = JSON.parse(JSON.stringify(initialBoard));
+var selectedSquare = null;
+var currentTurn = 'w';
+var moveHistory = [];
+var enPassantTarget = null;
+var gameOver = false;
+
+var pieceSymbols = {
+  'K':'♚','Q':'♛','R':'♜','B':'♝','N':'♞','P':'♟',
+  'k':'♚','q':'♛','r':'♜','b':'♝','n':'♞','p':'♟'
+};
+var notationLetter = { 'K':'K','Q':'Q','R':'R','B':'B','N':'N','P':'' };
+
+function isWhite(p) { return p && p === p.toUpperCase(); }
+function isBlack(p) { return p && p === p.toLowerCase(); }
+function sameColor(a, b) { return a && b && (isWhite(a) === isWhite(b)); }
+
+// ====== UKUR PAPAN ======
+function updateBoardSize() {
+  var boardEl = document.getElementById('board');
+  if (!boardEl) return;
+  var size = boardEl.clientWidth;
+  if (size > 0) {
+    boardEl.style.height = size + 'px';
+    boardEl.style.fontSize = (size / 8 * 0.72) + 'px';
+  }
+}
+
+// ====== RENDER ======
+function renderBoard() {
+  var boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+
+  for (var r = 0; r < 8; r++) {
+    for (var c = 0; c < 8; c++) {
+      var square = document.createElement('div');
+      square.className = 'square ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
+      square.setAttribute('data-row', r);
+      square.setAttribute('data-col', c);
+
+      if (selectedSquare && selectedSquare.row === r && selectedSquare.col === c) {
+        square.classList.add('selected');
+      }
+
+      if (selectedSquare) {
+        var legal = getLegalMovesForPiece(selectedSquare.row, selectedSquare.col);
+        var target = null;
+        for (var i = 0; i < legal.length; i++) {
+          if (legal[i].row === r && legal[i].col === c) { target = legal[i]; break; }
+        }
+        if (target) square.classList.add(target.capture ? 'legal-capture' : 'legal-move');
+      }
+
+      var piece = board[r][c];
+      if (piece) {
+        var pieceEl = document.createElement('span');
+        pieceEl.className = 'piece ' + (isWhite(piece) ? 'w' : 'b');
+        pieceEl.textContent = pieceSymbols[piece];
+        square.appendChild(pieceEl);
+      }
+
+      (function(rr, cc) {
+        square.addEventListener('click', function() { handleSquareClick(rr, cc); });
+      })(r, c);
+      boardEl.appendChild(square);
+    }
+  }
+
+  if (isInCheck(currentTurn)) {
+    var kingPos = findKing(currentTurn);
+    if (kingPos) {
+      var sq = boardEl.querySelector('.square[data-row="' + kingPos.row + '"][data-col="' + kingPos.col + '"]');
+      if (sq) sq.classList.add('check');
+    }
+  }
+
+  updateBoardSize();
+}
+
+// ====== KLIK ======
+function handleSquareClick(r, c) {
+  if (gameOver) return;
+  var piece = board[r][c];
+
+  if (selectedSquare) {
+    var legal = getLegalMovesForPiece(selectedSquare.row, selectedSquare.col);
+    var target = null;
+    for (var i = 0; i < legal.length; i++) {
+      if (legal[i].row === r && legal[i].col === c) { target = legal[i]; break; }
+    }
+    if (target) {
+      makeMove(selectedSquare.row, selectedSquare.col, r, c, target);
+      selectedSquare = null;
+      renderBoard();
+      return;
+    }
+  }
+
+  if (piece && ((currentTurn === 'w' && isWhite(piece)) || (currentTurn === 'b' && isBlack(piece)))) {
+    selectedSquare = { row: r, col: c };
+  } else {
+    selectedSquare = null;
+  }
+  renderBoard();
+}
+
+// ====== EKSEKUSI LANGKAH ======
+function makeMove(fromR, fromC, toR, toC, moveInfo) {
+  var piece = board[fromR][fromC];
+  var captured = board[toR][toC];
+
+  if (moveInfo.enPassant) board[fromR][toC] = null;
+
+  if (moveInfo.promotion) {
+    board[toR][toC] = isWhite(piece) ? 'Q' : 'q';
+  } else {
+    board[toR][toC] = piece;
+  }
+  board[fromR][fromC] = null;
+
+  if (moveInfo.castle === 'K') {
+    board[toR][5] = board[toR][7]; board[toR][7] = null;
+  } else if (moveInfo.castle === 'Q') {
+    board[toR][3] = board[toR][0]; board[toR][0] = null;
+  }
+
+  enPassantTarget = null;
+  if (piece.toLowerCase() === 'p' && Math.abs(toR - fromR) === 2) {
+    enPassantTarget = { row: (fromR + toR) / 2, col: fromC };
+  }
+
+  var letter = notationLetter[piece.toUpperCase()];
+  var fromSq = String.fromCharCode(97 + fromC) + (8 - fromR);
+  var toSq = String.fromCharCode(97 + toC) + (8 - toR);
+  moveHistory.push(letter + fromSq + '→' + toSq + (captured ? '×' : ''));
+  updateHistory();
+
+  currentTurn = currentTurn === 'w' ? 'b' : 'w';
+  updateStatus();
+
+  if (!hasAnyLegalMove(currentTurn)) {
+    gameOver = true;
+    var statusEl = document.getElementById('status');
+    if (isInCheck(currentTurn)) {
+      statusEl.textContent = 'Skakmat · ' + (currentTurn === 'w' ? 'Hitam' : 'Putih') + ' menang';
+      statusEl.classList.add('check');
+    } else {
+      statusEl.textContent = 'Seri · Stalemate';
+    }
+  }
+}
+
+// ====== LEGAL MOVES ======
+function getLegalMovesForPiece(r, c) {
+  var piece = board[r][c];
+  if (!piece) return [];
+  var moves = getPseudoLegalMoves(r, c, piece);
+  var result = [];
+
+  for (var i = 0; i < moves.length; i++) {
+    var move = moves[i];
+    var backup = JSON.parse(JSON.stringify(board));
+    var epBackup = enPassantTarget;
+
+    if (move.enPassant) board[r][move.col] = null;
+    board[move.row][move.col] = move.promotion ? (isWhite(piece) ? 'Q' : 'q') : piece;
+    board[r][c] = null;
+    if (move.castle === 'K') { board[r][5] = board[r][7]; board[r][7] = null; }
+    if (move.castle === 'Q') { board[r][3] = board[r][0]; board[r][0] = null; }
+
+    var safe = !isInCheck(isWhite(piece) ? 'w' : 'b');
+    board = backup;
+    enPassantTarget = epBackup;
+    if (safe) result.push(move);
+  }
+  return result;
+}
+
+function getPseudoLegalMoves(r, c, piece) {
+  var moves = [];
+  var color = isWhite(piece) ? 'w' : 'b';
+  var type = piece.toLowerCase();
+
+  function addMove(nr, nc, extra) {
+    extra = extra || {};
+    if (nr < 0 || nr > 7 || nc < 0 || nc > 7) return;
+    var target = board[nr][nc];
+    if (target && sameColor(piece, target)) return;
+    var move = { row: nr, col: nc, capture: !!target || !!extra.enPassant };
+    for (var k in extra) move[k] = extra[k];
+    moves.push(move);
+  }
+
+  if (type === 'p') {
+    var dir = color === 'w' ? -1 : 1;
+    var startRow = color === 'w' ? 6 : 1;
+    var promoRow = color === 'w' ? 0 : 7;
+    var front = board[r + dir] ? board[r + dir][c] : undefined;
+
+    if (front === null) {
+      if (r + dir === promoRow) {
+        var promotions = ['Q','R','B','N'];
+        for (var i = 0; i < promotions.length; i++) {
+          moves.push({ row: r + dir, col: c, promotion: promotions[i] });
+        }
+      } else {
+        addMove(r + dir, c);
+        var dbl = board[r + 2*dir] ? board[r + 2*dir][c] : 'x';
+        if (r === startRow && dbl === null) addMove(r + 2*dir, c);
+      }
+    }
+    for (var k = 0; k < 2; k++) {
+      var dc = k === 0 ? -1 : 1;
+      var nr = r + dir, nc = c + dc;
+      if (nr < 0 || nr > 7 || nc < 0 || nc > 7) continue;
+      var target = board[nr][nc];
+      if (target && !sameColor(piece, target)) {
+        if (nr === promoRow) {
+          var promotions = ['Q','R','B','N'];
+          for (var i = 0; i < promotions.length; i++) {
+            moves.push({ row: nr, col: nc, capture: true, promotion: promotions[i] });
+          }
+        } else {
+          addMove(nr, nc);
+        }
+      }
+      if (enPassantTarget && enPassantTarget.row === nr && enPassantTarget.col === nc) {
+        moves.push({ row: nr, col: nc, capture: true, enPassant: true });
+      }
+    }
+  } else if (type === 'n') {
+    var jumps = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+    for (var i = 0; i < jumps.length; i++) addMove(r + jumps[i][0], c + jumps[i][1]);
+  } else if (type === 'b' || type === 'r' || type === 'q') {
+    var dirs;
+    if (type === 'b') dirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
+    else if (type === 'r') dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+    else dirs = [[-1,-1],[-1,1],[1,-1],[1,1],[-1,0],[1,0],[0,-1],[0,1]];
+
+    for (var d = 0; d < dirs.length; d++) {
+      for (var step = 1; step < 8; step++) {
+        var nr = r + dirs[d][0]*step, nc = c + dirs[d][1]*step;
+        if (nr < 0 || nr > 7 || nc < 0 || nc > 7) break;
+        var target = board[nr][nc];
+        if (target) {
+          if (!sameColor(piece, target)) moves.push({ row: nr, col: nc, capture: true });
+          break;
+        }
+        moves.push({ row: nr, col: nc, capture: false });
+      }
+    }
+  } else if (type === 'k') {
+    var dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    for (var i = 0; i < dirs.length; i++) addMove(r + dirs[i][0], c + dirs[i][1]);
+
+    if (color === 'w' && r === 7 && c === 4) {
+      if (board[7][5] === null && board[7][6] === null && board[7][7] === 'R' &&
+          !isInCheck('w') && !squareAttacked(7,5,'b') && !squareAttacked(7,6,'b')) {
+        moves.push({ row: 7, col: 6, castle: 'K' });
+      }
+      if (board[7][3] === null && board[7][2] === null && board[7][1] === null && board[7][0] === 'R' &&
+          !isInCheck('w') && !squareAttacked(7,3,'b') && !squareAttacked(7,2,'b')) {
+        moves.push({ row: 7, col: 2, castle: 'Q' });
+      }
+    }
+    if (color === 'b' && r === 0 && c === 4) {
+      if (board[0][5] === null && board[0][6] === null && board[0][7] === 'r' &&
+          !isInCheck('b') && !squareAttacked(0,5,'w') && !squareAttacked(0,6,'w')) {
+        moves.push({ row: 0, col: 6, castle: 'K' });
+      }
+      if (board[0][3] === null && board[0][2] === null && board[0][1] === null && board[0][0] === 'r' &&
+          !isInCheck('b') && !squareAttacked(0,3,'w') && !squareAttacked(0,2,'w')) {
+        moves.push({ row: 0, col: 2, castle: 'Q' });
+      }
+    }
+  }
+  return moves;
+}
+
+// ====== SKAK ======
+function isInCheck(color) {
+  var kingPos = findKing(color);
+  if (!kingPos) return false;
+  return squareAttacked(kingPos.row, kingPos.col, color === 'w' ? 'b' : 'w');
+}
+
+function findKing(color) {
+  var king = color === 'w' ? 'K' : 'k';
+  for (var r = 0; r < 8; r++)
+    for (var c = 0; c < 8; c++)
+      if (board[r][c] === king) return { row: r, col: c };
+  return null;
+}
+
+function squareAttacked(r, c, byColor) {
+  for (var i = 0; i < 8; i++) {
+    for (var j = 0; j < 8; j++) {
+      var piece = board[i][j];
+      if (!piece) continue;
+      if (byColor === 'w' && !isWhite(piece)) continue;
+      if (byColor === 'b' && !isBlack(piece)) continue;
+      var attacks = getPseudoLegalMovesWithoutCastle(i, j, piece);
+      for (var k = 0; k < attacks.length; k++) {
+        if (attacks[k].row === r && attacks[k].col === c) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function getPseudoLegalMovesWithoutCastle(r, c, piece) {
+  var moves = [];
+  var color = isWhite(piece) ? 'w' : 'b';
+  var type = piece.toLowerCase();
+
+  function ray(dirs) {
+    for (var d = 0; d < dirs.length; d++) {
+      for (var step = 1; step < 8; step++) {
+        var nr = r + dirs[d][0]*step, nc = c + dirs[d][1]*step;
+        if (nr < 0 || nr > 7 || nc < 0 || nc > 7) break;
+        var target = board[nr][nc];
+        if (target && sameColor(piece, target)) break;
+        moves.push({ row: nr, col: nc });
+        if (target) break;
+      }
+    }
+  }
+
+  if (type === 'p') {
+    var dir = color === 'w' ? -1 : 1;
+    for (var k = 0; k < 2; k++) {
+      var dc = k === 0 ? -1 : 1;
+      var nr = r + dir, nc = c + dc;
+      if (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7) moves.push({ row: nr, col: nc });
+    }
+  } else if (type === 'n') {
+    var jumps = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+    for (var i = 0; i < jumps.length; i++) {
+      var nr = r + jumps[i][0], nc = c + jumps[i][1];
+      if (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7) moves.push({ row: nr, col: nc });
+    }
+  } else if (type === 'b') ray([[-1,-1],[-1,1],[1,-1],[1,1]]);
+  else if (type === 'r') ray([[-1,0],[1,0],[0,-1],[0,1]]);
+  else if (type === 'q') ray([[-1,-1],[-1,1],[1,-1],[1,1],[-1,0],[1,0],[0,-1],[0,1]]);
+  else if (type === 'k') {
+    var dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    for (var i = 0; i < dirs.length; i++) {
+      var nr = r + dirs[i][0], nc = c + dirs[i][1];
+      if (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7) moves.push({ row: nr, col: nc });
+    }
+  }
+  return moves;
+}
+
+function hasAnyLegalMove(color) {
+  for (var r = 0; r < 8; r++) {
+    for (var c = 0; c < 8; c++) {
+      var piece = board[r][c];
+      if (!piece) continue;
+      if (color === 'w' && !isWhite(piece)) continue;
+      if (color === 'b' && !isBlack(piece)) continue;
+      if (getLegalMovesForPiece(r, c).length > 0) return true;
+    }
+  }
+  return false;
+}
+
+// ====== UI ======
+function updateStatus() {
+  if (gameOver) return;
+  var statusEl = document.getElementById('status');
+  var turnName = currentTurn === 'w' ? 'Putih' : 'Hitam';
+  if (isInCheck(currentTurn)) {
+    statusEl.textContent = 'Skak · Giliran ' + turnName;
+    statusEl.classList.add('check');
+  } else {
+    statusEl.textContent = 'Giliran ' + turnName;
+    statusEl.classList.remove('check');
+  }
+}
+
+function updateHistory() {
+  var el = document.getElementById('moveHistory');
+  el.innerHTML = '';
+  for (var i = 0; i < moveHistory.length; i++) {
+    var li = document.createElement('li');
+    li.textContent = moveHistory[i];
+    el.appendChild(li);
+  }
+}
+
+function resetGame() {
+  board = JSON.parse(JSON.stringify(initialBoard));
+  selectedSquare = null;
+  currentTurn = 'w';
+  moveHistory = [];
+  enPassantTarget = null;
+  gameOver = false;
+  document.getElementById('status').classList.remove('check');
+  updateStatus();
+  updateHistory();
+  renderBoard();
+}
+
+// ====== MULAI ======
+document.getElementById('resetBtn').addEventListener('click', resetGame);
+renderBoard();
+updateStatus();
+window.addEventListener('load', updateBoardSize);
+window.addEventListener('resize', updateBoardSize);
+window.addEventListener('orientationchange', function() { setTimeout(updateBoardSize, 200); });
+setTimeout(updateBoardSize, 300);
+setTimeout(updateBoardSize, 800);
+</script>
 </body>
 </html>
